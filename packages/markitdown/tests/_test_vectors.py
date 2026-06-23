@@ -217,6 +217,17 @@ GENERAL_TEST_VECTORS = [
         must_not_include=[],
     ),
     FileTestVector(
+        filename="test_strikethrough.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        charset=None,
+        url=None,
+        must_include=[
+            "~~strikethrough-cell-value~~",
+            "normal-cell-value",
+        ],
+        must_not_include=[],
+    ),
+    FileTestVector(
         filename="test.epub",
         mimetype="application/epub+zip",
         charset=None,

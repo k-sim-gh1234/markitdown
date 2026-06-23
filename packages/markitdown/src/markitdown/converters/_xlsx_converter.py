@@ -1,3 +1,4 @@
+import html
 import sys
 from typing import BinaryIO, Any
 from ._html_converter import HtmlConverter
@@ -80,11 +81,36 @@ class XlsxConverter(DocumentConverter):
                 _xlsx_dependency_exc_info[2]
             )
 
-        sheets = pd.read_excel(file_stream, sheet_name=None, engine="openpyxl")
+        def _cell_to_html(cell, tag: str) -> str:
+            value = "" if cell.value is None else html.escape(str(cell.value))
+            if cell.font and cell.font.strike:
+                value = f"<s>{value}</s>"
+            return f"<{tag}>{value}</{tag}>"
+
+        wb = openpyxl.load_workbook(file_stream, data_only=True)
         md_content = ""
-        for s in sheets:
-            md_content += f"## {s}\n"
-            html_content = sheets[s].to_html(index=False)
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            md_content += f"## {sheet_name}\n"
+
+            rows = list(ws.iter_rows())
+            if not rows:
+                md_content += "\n"
+                continue
+
+            html_parts = ['<table border="1" class="dataframe">']
+            html_parts.append('<thead><tr style="text-align: right;">')
+            for cell in rows[0]:
+                html_parts.append(_cell_to_html(cell, "th"))
+            html_parts.append("</tr></thead><tbody>")
+            for row in rows[1:]:
+                html_parts.append("<tr>")
+                for cell in row:
+                    html_parts.append(_cell_to_html(cell, "td"))
+                html_parts.append("</tr>")
+            html_parts.append("</tbody></table>")
+
+            html_content = "".join(html_parts)
             md_content += (
                 self._html_converter.convert_string(
                     html_content, **kwargs

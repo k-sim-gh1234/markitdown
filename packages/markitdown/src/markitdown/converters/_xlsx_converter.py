@@ -1,4 +1,5 @@
 import sys
+from io import BytesIO
 from typing import BinaryIO, Any
 from ._html_converter import HtmlConverter
 from .._base_converter import DocumentConverter, DocumentConverterResult
@@ -80,11 +81,39 @@ class XlsxConverter(DocumentConverter):
                 _xlsx_dependency_exc_info[2]
             )
 
-        sheets = pd.read_excel(file_stream, sheet_name=None, engine="openpyxl")
+        # Read the content once so it can be used by both pandas and openpyxl
+        content = file_stream.read()
+        sheets = pd.read_excel(BytesIO(content), sheet_name=None, engine="openpyxl")
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+
         md_content = ""
         for s in sheets:
+            df = sheets[s].copy()
+            ws = wb[s]
+
+            # Apply strikethrough markers to header cells (openpyxl row 1)
+            new_columns = list(df.columns)
+            for col_idx in range(len(new_columns)):
+                header_cell = ws.cell(row=1, column=col_idx + 1)
+                if header_cell.font and header_cell.font.strike:
+                    new_columns[col_idx] = f"~~{new_columns[col_idx]}~~"
+            df.columns = new_columns
+
+            # Apply strikethrough markers to data cells
+            # pandas row i corresponds to openpyxl row i+2 (row 1 is the header)
+            for row_idx in range(len(df)):
+                for col_idx in range(len(df.columns)):
+                    data_cell = ws.cell(row=row_idx + 2, column=col_idx + 1)
+                    if data_cell.font and data_cell.font.strike:
+                        value = df.iat[row_idx, col_idx]
+                        if not (isinstance(value, float) and pd.isna(value)):
+                            # Convert the column to object dtype to allow mixed types
+                            col_name = df.columns[col_idx]
+                            df[col_name] = df[col_name].astype(object)
+                            df.iat[row_idx, col_idx] = f"~~{value}~~"
+
             md_content += f"## {s}\n"
-            html_content = sheets[s].to_html(index=False)
+            html_content = df.to_html(index=False)
             md_content += (
                 self._html_converter.convert_string(
                     html_content, **kwargs

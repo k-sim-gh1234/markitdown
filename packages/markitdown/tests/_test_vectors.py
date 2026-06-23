@@ -234,6 +234,32 @@ GENERAL_TEST_VECTORS = [
         ],
         must_not_include=[],
     ),
+    FileTestVector(
+        filename="test_strikethrough.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        charset=None,
+        url=None,
+        must_include=[
+            "~~strikethrough~~",
+            "~~struck through~~",
+            "This is a normal paragraph.",
+        ],
+        must_not_include=[],
+    ),
+    FileTestVector(
+        filename="test_strikethrough.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        charset=None,
+        url=None,
+        must_include=[
+            "~~Item B~~",
+            "~~200~~",
+            "~~Removed~~",
+            "Item A",
+            "Item C",
+        ],
+        must_not_include=[],
+    ),
 ]
 
 

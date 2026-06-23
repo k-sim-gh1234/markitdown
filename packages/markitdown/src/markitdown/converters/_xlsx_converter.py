@@ -101,15 +101,24 @@ class XlsxConverter(DocumentConverter):
 
             # Apply strikethrough markers to data cells
             # pandas row i corresponds to openpyxl row i+2 (row 1 is the header)
+            # Pre-convert columns that contain strikethrough cells to object dtype
+            # so that string markers can be assigned to any numeric column.
+            strikethrough_cols = set()
+            for row_idx in range(len(df)):
+                for col_idx in range(len(df.columns)):
+                    data_cell = ws.cell(row=row_idx + 2, column=col_idx + 1)
+                    if data_cell.font and data_cell.font.strike:
+                        strikethrough_cols.add(col_idx)
+
+            for col_idx in strikethrough_cols:
+                df[df.columns[col_idx]] = df[df.columns[col_idx]].astype(object)
+
             for row_idx in range(len(df)):
                 for col_idx in range(len(df.columns)):
                     data_cell = ws.cell(row=row_idx + 2, column=col_idx + 1)
                     if data_cell.font and data_cell.font.strike:
                         value = df.iat[row_idx, col_idx]
-                        if not (isinstance(value, float) and pd.isna(value)):
-                            # Convert the column to object dtype to allow mixed types
-                            col_name = df.columns[col_idx]
-                            df[col_name] = df[col_name].astype(object)
+                        if not pd.isna(value):
                             df.iat[row_idx, col_idx] = f"~~{value}~~"
 
             md_content += f"## {s}\n"
